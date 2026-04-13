@@ -1,7 +1,14 @@
 export interface WafConfig {
-  enabled?: boolean;
-  blockMalicious?: boolean;
+  enabled: boolean;
 
-  blockMessage?: string;
-  statusCode?: number;
+  // block request if true
+  blockMalicious: boolean;
+
+  blockMessage: string;
+  statusCode: number;
+  inspectionRules: {
+    checkBody: boolean;
+    checkQuery: boolean;
+    checkHeaders: boolean;
+  };
 }
