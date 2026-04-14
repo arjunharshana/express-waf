@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { WafConfig } from "../types";
+import { detectSQLi } from "../detectors/sqli";
 
-// define default config
 const defaultConfig: WafConfig = {
   enabled: true,
   blockMalicious: true,
@@ -14,14 +14,13 @@ const defaultConfig: WafConfig = {
   },
 };
 
-// function for creating WAF middleware
-export function createWaf(userConfig: Partial<WafConfig> = {}) {
+export const createWaf = (userConfig: Partial<WafConfig> = {}) => {
   const config: WafConfig = {
     ...defaultConfig,
     ...userConfig,
     inspectionRules: {
       ...defaultConfig.inspectionRules,
-      ...(userConfig?.inspectionRules || {}),
+      ...(userConfig.inspectionRules || {}),
     },
   };
 
@@ -30,41 +29,48 @@ export function createWaf(userConfig: Partial<WafConfig> = {}) {
       return next();
     }
 
-    // gather payloads based on inspection rules
-    const payloadsToInspect: string[] = [];
+    const targets: { location: string; value: string }[] = [];
 
     if (config.inspectionRules.checkQuery && req.query) {
-      payloadsToInspect.push(JSON.stringify(req.query));
-    }
-    if (config.inspectionRules.checkBody && req.body) {
-      payloadsToInspect.push(JSON.stringify(req.body));
-    }
-    if (config.inspectionRules.checkHeaders && req.headers) {
-      payloadsToInspect.push(JSON.stringify(req.headers));
-    }
-
-    const combinedPayload = payloadsToInspect.join(" ").toLowerCase();
-
-    // detection phase
-    let isMalicious = false;
-    let attackType = "None";
-
-    // regex engine will go here
-
-    // if detected as malicious, log and block if configured
-    if (isMalicious) {
-      console.warn(
-        `[WAF ALERT] ${attackType} attempt blocked from IP: ${req.ip}`,
-      );
-
-      if (config.blockMalicious) {
-        res.status(config.statusCode).json({
-          success: false,
-          error: config.blockMessage,
-        });
-        return; // stop further processing
+      for (const [key, value] of Object.entries(req.query)) {
+        if (typeof value === "string")
+          targets.push({ location: `query.${key}`, value });
       }
     }
+
+    if (
+      config.inspectionRules.checkBody &&
+      req.body &&
+      typeof req.body === "object"
+    ) {
+      for (const [key, value] of Object.entries(req.body)) {
+        if (typeof value === "string")
+          targets.push({ location: `body.${key}`, value });
+      }
+    }
+
+    for (const { location, value } of targets) {
+      // Run the SQLi Detector
+      const sqliResult = detectSQLi(value);
+
+      if (!sqliResult.clean) {
+        // If it fails, we trigger the block action
+        console.warn(
+          `[WAF ALERT] SQLi blocked | rule=${sqliResult.rule} | location=${location} | ip=${req.ip} | matched="${sqliResult.matched}"`,
+        );
+
+        if (config.blockMalicious) {
+          res.status(config.statusCode).json({
+            success: false,
+            error: config.blockMessage,
+          });
+          return;
+        }
+      }
+
+      // xss and noqli here
+    }
+
     next();
   };
-}
+};
