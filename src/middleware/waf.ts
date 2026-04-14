@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import { WafConfig } from "../types";
 import { detectSQLi } from "../detectors/sqli";
 import { detectXSS } from "../detectors/xss";
+import { detectNoSQLi } from "../detectors/nosqli";
 
 const defaultConfig: WafConfig = {
   enabled: true,
@@ -36,21 +37,25 @@ export const createWaf = (userConfig: Partial<WafConfig> = {}) => {
       value: string;
     }[] = [];
 
+    // Check Query Params
     if (config.inspectionRules.checkQuery && req.query) {
-      for (const [key, value] of Object.entries(req.query)) {
-        if (typeof value === "string")
-          targets.push({ type: "payload", location: `query.${key}`, value });
-      }
+      targets.push({
+        type: "payload",
+        location: "query",
+        value: JSON.stringify(req.query),
+      });
     }
 
-    if (
-      config.inspectionRules.checkBody &&
-      req.body &&
-      typeof req.body === "object"
-    ) {
-      for (const [key, value] of Object.entries(req.body)) {
-        if (typeof value === "string")
-          targets.push({ type: "payload", location: `body.${key}`, value });
+    // Check Body
+    if (config.inspectionRules.checkBody && req.body) {
+      try {
+        targets.push({
+          type: "payload",
+          location: "body",
+          value: JSON.stringify(req.body),
+        });
+      } catch (e) {
+        console.error("[WAF] Failed to stringify request body");
       }
     }
 
@@ -62,6 +67,7 @@ export const createWaf = (userConfig: Partial<WafConfig> = {}) => {
       }
     }
 
+    // detection loop
     for (const { type, location, value } of targets) {
       if (type !== "header") {
         const sqliResult = detectSQLi(value);
@@ -74,6 +80,20 @@ export const createWaf = (userConfig: Partial<WafConfig> = {}) => {
             sqliResult.rule,
             location,
             sqliResult.matched,
+          );
+        }
+
+        // Run NoSQLi Detector
+        const nosqliResult = detectNoSQLi(value);
+        if (!nosqliResult.clean) {
+          return handleBlock(
+            req,
+            res,
+            config,
+            "NoSQLi",
+            nosqliResult.rule,
+            location,
+            nosqliResult.matched,
           );
         }
       }
