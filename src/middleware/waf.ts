@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { WafConfig } from "../types";
 import { detectSQLi } from "../detectors/sqli";
+import { detectXSS } from "../detectors/xss";
 
 const defaultConfig: WafConfig = {
   enabled: true,
@@ -14,6 +15,8 @@ const defaultConfig: WafConfig = {
   },
 };
 
+const SCANNED_HEADERS = ["referer", "user-agent", "x-forwarded-for"];
+
 export const createWaf = (userConfig: Partial<WafConfig> = {}) => {
   const config: WafConfig = {
     ...defaultConfig,
@@ -25,16 +28,18 @@ export const createWaf = (userConfig: Partial<WafConfig> = {}) => {
   };
 
   return (req: Request, res: Response, next: NextFunction): void => {
-    if (!config.enabled) {
-      return next();
-    }
+    if (!config.enabled) return next();
 
-    const targets: { location: string; value: string }[] = [];
+    const targets: {
+      type: "payload" | "header";
+      location: string;
+      value: string;
+    }[] = [];
 
     if (config.inspectionRules.checkQuery && req.query) {
       for (const [key, value] of Object.entries(req.query)) {
         if (typeof value === "string")
-          targets.push({ location: `query.${key}`, value });
+          targets.push({ type: "payload", location: `query.${key}`, value });
       }
     }
 
@@ -45,32 +50,70 @@ export const createWaf = (userConfig: Partial<WafConfig> = {}) => {
     ) {
       for (const [key, value] of Object.entries(req.body)) {
         if (typeof value === "string")
-          targets.push({ location: `body.${key}`, value });
+          targets.push({ type: "payload", location: `body.${key}`, value });
       }
     }
 
-    for (const { location, value } of targets) {
-      // Run the SQLi Detector
-      const sqliResult = detectSQLi(value);
+    if (config.inspectionRules.checkHeaders) {
+      for (const header of SCANNED_HEADERS) {
+        const value = req.headers[header];
+        if (typeof value === "string")
+          targets.push({ type: "header", location: `header.${header}`, value });
+      }
+    }
 
-      if (!sqliResult.clean) {
-        // If it fails, we trigger the block action
-        console.warn(
-          `[WAF ALERT] SQLi blocked | rule=${sqliResult.rule} | location=${location} | ip=${req.ip} | matched="${sqliResult.matched}"`,
-        );
-
-        if (config.blockMalicious) {
-          res.status(config.statusCode).json({
-            success: false,
-            error: config.blockMessage,
-          });
-          return;
+    for (const { type, location, value } of targets) {
+      if (type !== "header") {
+        const sqliResult = detectSQLi(value);
+        if (!sqliResult.clean) {
+          return handleBlock(
+            req,
+            res,
+            config,
+            "SQLi",
+            sqliResult.rule,
+            location,
+            sqliResult.matched,
+          );
         }
       }
 
-      // xss and noqli here
+      // XSS Inspection
+      const xssResult = detectXSS(value);
+      if (!xssResult.clean) {
+        return handleBlock(
+          req,
+          res,
+          config,
+          "XSS",
+          xssResult.rule,
+          location,
+          xssResult.matched,
+        );
+      }
     }
 
     next();
   };
 };
+
+function handleBlock(
+  req: Request,
+  res: Response,
+  config: WafConfig,
+  attackType: string,
+  rule: string,
+  location: string,
+  matched: string,
+): void {
+  console.warn(
+    `[WAF] ${attackType} blocked | rule=${rule} | location=${location} | ip=${req.ip} | path=${req.path} | matched="${matched}"`,
+  );
+
+  if (config.blockMalicious) {
+    res.status(config.statusCode).json({
+      success: false,
+      error: config.blockMessage,
+    });
+  }
+}
