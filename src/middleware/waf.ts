@@ -5,6 +5,7 @@ import { detectXSS } from "../detectors/xss";
 import { detectNoSQLi } from "../detectors/nosqli";
 import { detectLFI } from "../detectors/lfi";
 import { ipManager } from "./ipmanager";
+import { logger } from "../telemetry/logger";
 
 const defaultConfig: WafConfig = {
   enabled: true,
@@ -169,9 +170,14 @@ function handleBlock(
   location: string,
   matched: string,
 ): void {
-  console.warn(
-    `[WAF] ${attackType} blocked | rule=${rule} | location=${location} | ip=${req.ip} | path=${req.path} | matched="${matched}"`,
-  );
+  logger.attack({
+    attackType,
+    rule,
+    location,
+    ip: req.ip || req.socket.remoteAddress || "unknown",
+    path: req.path,
+    matched,
+  });
 
   if (config.blockMalicious) {
     res.status(config.statusCode).json({
