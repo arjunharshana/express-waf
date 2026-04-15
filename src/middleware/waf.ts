@@ -4,6 +4,7 @@ import { detectSQLi } from "../detectors/sqli";
 import { detectXSS } from "../detectors/xss";
 import { detectNoSQLi } from "../detectors/nosqli";
 import { detectLFI } from "../detectors/lfi";
+import { ipManager } from "./ipmanager";
 
 const defaultConfig: WafConfig = {
   enabled: true,
@@ -31,6 +32,8 @@ export const createWaf = (userConfig: Partial<WafConfig> = {}) => {
 
   return (req: Request, res: Response, next: NextFunction): void => {
     if (!config.enabled) return next();
+
+    if ((req as any).isWhitelisted) return next();
 
     const targets: {
       type: "payload" | "header";
