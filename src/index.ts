@@ -7,6 +7,8 @@ export { sqliMiddleware } from "./middleware/sqlimiddleware";
 export { xssMiddleware } from "./middleware/xssmiddleware";
 export { nosqliMiddleware } from "./middleware/nosqslimiddleware";
 export { lfiMiddleware } from "./middleware/lfimiddleware";
+export { rateLimiter } from "./middleware/rateLimiter";
+export type { RateLimitOptions } from "./middleware/rateLimiter";
 
 export { detectSQLi } from "./detectors/sqli";
 export { detectXSS } from "./detectors/xss";
