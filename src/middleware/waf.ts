@@ -3,6 +3,7 @@ import { WafConfig } from "../types";
 import { detectSQLi } from "../detectors/sqli";
 import { detectXSS } from "../detectors/xss";
 import { detectNoSQLi } from "../detectors/nosqli";
+import { detectLFI } from "../detectors/lfi";
 
 const defaultConfig: WafConfig = {
   enabled: true,
@@ -110,6 +111,45 @@ export const createWaf = (userConfig: Partial<WafConfig> = {}) => {
           location,
           xssResult.matched,
         );
+      }
+
+      if (type !== "header") {
+        const sqliResult = detectSQLi(value);
+        if (!sqliResult.clean)
+          return handleBlock(
+            req,
+            res,
+            config,
+            "SQLi",
+            sqliResult.rule,
+            location,
+            sqliResult.matched,
+          );
+
+        const nosqliResult = detectNoSQLi(value);
+        if (!nosqliResult.clean)
+          return handleBlock(
+            req,
+            res,
+            config,
+            "NoSQLi",
+            nosqliResult.rule,
+            location,
+            nosqliResult.matched,
+          );
+
+        // lfi inspection
+        const lfiResult = detectLFI(value);
+        if (!lfiResult.clean)
+          return handleBlock(
+            req,
+            res,
+            config,
+            "LFI",
+            lfiResult.rule,
+            location,
+            lfiResult.matched,
+          );
       }
     }
 
