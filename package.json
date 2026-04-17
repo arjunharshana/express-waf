@@ -1,5 +1,5 @@
 {
-  "name": "express-waf",
+  "name": "@arjun/express-waf",
   "version": "1.0.0",
   "description": "Custom Express Security Middleware (WAF/RASP)",
   "main": "dist/src/index.js",
