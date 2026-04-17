@@ -1,5 +1,5 @@
 {
-  "name": "@arjun/express-waf",
+  "name": "arjunharshana-express-waf",
   "version": "1.0.0",
   "description": "Custom Express Security Middleware (WAF/RASP)",
   "main": "dist/src/index.js",
