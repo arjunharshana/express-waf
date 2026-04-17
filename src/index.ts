@@ -9,6 +9,7 @@ export { nosqliMiddleware } from "./middleware/nosqslimiddleware";
 export { lfiMiddleware } from "./middleware/lfimiddleware";
 export { rateLimiter } from "./middleware/rateLimiter";
 export type { RateLimitOptions } from "./middleware/rateLimiter";
+export { ipManager } from "./middleware/ipmanager";
 export { logger } from "./telemetry/logger";
 export { wafEvents } from "./telemetry/eventEmitter";
 

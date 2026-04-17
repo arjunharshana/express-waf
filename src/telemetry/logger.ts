@@ -87,7 +87,7 @@ class WafLogger {
     switch (level) {
       case "ATTACK":
         console.warn(
-          `[WAF] 🛑 ATTACK | type=${safe.attackType} | rule=${safe.rule} | ` +
+          `[WAF] ATTACK | type=${safe.attackType} | rule=${safe.rule} | ` +
             `ip=${safe.ip} | path=${safe.path} | location=${safe.location} | ` +
             `matched="${safe.matched}"`,
         );
