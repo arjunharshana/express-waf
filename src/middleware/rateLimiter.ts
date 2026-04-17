@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from "express";
+import { wafEvents } from "../telemetry/eventEmitter";
 
 export interface RateLimitOptions {
   // time window
@@ -64,6 +65,13 @@ export const rateLimiter = (options: Partial<RateLimitOptions> = {}) => {
         record.blockUntil = now + config.blockDurationMs;
       }
 
+      wafEvents.emit("rateLimit", {
+        ip,
+        path: req.path,
+        method: req.method,
+        limit: config.maxRequests,
+        requestCount: record.count,
+      });
       console.warn(`[WAF] Rate limit exceeded | ip=${ip} | path=${req.path}`);
       res.status(429).json({ success: false, error: config.message });
       return;

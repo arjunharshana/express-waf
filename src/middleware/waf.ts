@@ -6,6 +6,7 @@ import { detectNoSQLi } from "../detectors/nosqli";
 import { detectLFI } from "../detectors/lfi";
 import { ipManager } from "./ipmanager";
 import { logger } from "../telemetry/logger";
+import { wafEvents } from "../telemetry/eventEmitter";
 
 const defaultConfig: WafConfig = {
   enabled: true,
@@ -170,14 +171,17 @@ function handleBlock(
   location: string,
   matched: string,
 ): void {
-  logger.attack({
+  const payload = {
     attackType,
     rule,
     location,
     ip: req.ip || req.socket.remoteAddress || "unknown",
     path: req.path,
     matched,
-  });
+  };
+  logger.attack(payload);
+
+  wafEvents.emit("attack", payload);
 
   if (config.blockMalicious) {
     res.status(config.statusCode).json({

@@ -9,6 +9,8 @@ export { nosqliMiddleware } from "./middleware/nosqslimiddleware";
 export { lfiMiddleware } from "./middleware/lfimiddleware";
 export { rateLimiter } from "./middleware/rateLimiter";
 export type { RateLimitOptions } from "./middleware/rateLimiter";
+export { logger } from "./telemetry/logger";
+export { wafEvents } from "./telemetry/eventEmitter";
 
 export { detectSQLi } from "./detectors/sqli";
 export { detectXSS } from "./detectors/xss";

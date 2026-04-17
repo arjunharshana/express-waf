@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-
+import { wafEvents } from "../telemetry/eventEmitter";
 export interface IpManagerOptions {
   whitelist?: string[];
   blacklist?: string[];
@@ -39,6 +39,12 @@ export const ipManager = (options: IpManagerOptions = {}) => {
     // blacklist
     for (const rule of blacklistRules) {
       if (rule.test(ip)) {
+        wafEvents.emit("blacklistedIp", {
+          ip,
+          path: req.path,
+          method: req.method,
+          reason: "IP matched static blacklist rule",
+        });
         console.warn(`[WAF] Connection dropped | Blacklisted IP=${ip}`);
         res.status(403).json({
           success: false,
