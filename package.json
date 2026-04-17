@@ -4,6 +4,9 @@
   "description": "Custom Express Security Middleware (WAF/RASP)",
   "main": "dist/src/index.js",
   "types": "dist/src/index.d.ts",
+  "files": [
+    "dist"
+  ],
   "directories": {
     "example": "examples",
     "test": "tests"
