@@ -1,11 +1,12 @@
 {
-  "name": "arjunharshana-express-waf",
+  "name": "arjun-express-waf",
   "version": "1.0.0",
   "description": "Custom Express Security Middleware (WAF/RASP)",
   "main": "dist/src/index.js",
   "types": "dist/src/index.d.ts",
   "files": [
-    "dist"
+    "dist",
+    "README.md"
   ],
   "directories": {
     "example": "examples",
